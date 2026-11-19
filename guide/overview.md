@@ -50,3 +50,7 @@ flowchart TB
 3. [Glossary](glossary.md) — short definitions  
 
 Checklists and PR detail live under [`docs/`](../docs/).
+
+## Further reading
+
+[Kubernetes Application Onboarding Guide](https://yoyogroup-com.atlassian.net/wiki/spaces/~7120201b205b083b424b22835be38766bee0da/pages/1852702721/Kubernetes+Application+Onboarding+Guide) — Kubernetes Application Onboarding Guide (Cloud Platform, Confluence): general guide to taking any app from a Git repo to a validated deployment on the YoYo Kubernetes platform with Tekton, Helm, Argo CD and yoyo-cloud. Still a draft pending Cloud Platform approval. This playbook covers the Amplify-specific parts.

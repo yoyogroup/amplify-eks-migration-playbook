@@ -23,7 +23,7 @@ Copy a peer block (e.g. `yoyoDealsMarketplaceWeb` / `wiplatformPortalNextjsWeb`)
 
 - Chart **`yoyo-app`** — use the **same version** as the peer entry on `main` (do not hardcode; read current catalog).
 - `valueFileRepo` → app git URL; `valueFileRepotargetRevision` → branch Argo watches (`development`, `integration`, `master`, or `main` per repo).
-- `valueFilePath`: `deploy/k8s/int/web/values.yaml` (or `prod/...`).
+- `valuesFile`: `$values/deploy/k8s/int/web/values.yaml` (PROD: `$values/deploy/k8s/prod/web/values.yaml`) — same `$values/` prefix as [#361](https://github.com/yoyogroup/cloud_catalog/pull/361) / [#365](https://github.com/yoyogroup/cloud_catalog/pull/365).
 - Namespace INT: e.g. `<INT_NAMESPACE>` (wiplatform: `int-eu-west-1-intergrations`).
 - Namespace PROD: e.g. `<PROD_NAMESPACE>` (wiplatform #365: `prod-eu-west-1-intergrations`).
 

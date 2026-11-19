@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # Template — copy to app repo root; replace <NODE_VERSION> with .nvmrc pin (e.g. 24.22.3-alpine3.24).
-# Reference: wiplatform-portal-nextjs PR #142; yoyo-deals-marketplace-nextjs / yoyo-avbob-nextjs.
+# Reference: wiplatform-portal-nextjs PR #142; yoyo-avbob-nextjs / yoyo-deals-marketplace-nextjs (npm).
+# pnpm apps: follow yoyo-avbob-nextjs Dockerfile (corepack, pnpm install, `pnpm exec next build --webpack`).
 
 ARG NODE_VERSION=<NODE_VERSION>
 ARG ALPINE_VERSION=3.24
@@ -29,13 +30,13 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
 
-# Optional codegen (wiplatform requires `npm run generate:api`). Apps without codegen: use only `npx next build --webpack`.
-# RUN npm run generate:api
+# Optional codegen before next build (uncomment one line if your app needs it):
+#   npm run generate:api &&   # wiplatform-portal-nextjs
+#   pnpm api:generate &&       # yoyo-avbob-nextjs / Deals-style Orval
 #
 # One `next build` only — never chain `npm run build` and `next build` (duplicate compile).
 # Webpack, not Turbopack, under Tekton ~4Gi (docs/gotchas.md).
-RUN npm run generate:api \
-  && npx next build --webpack \
+RUN npx next build --webpack \
   && rm -rf .next/cache \
   && mv .next/static .next/standalone/.next/static \
   && mv public .next/standalone/public

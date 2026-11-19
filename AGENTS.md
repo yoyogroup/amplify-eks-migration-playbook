@@ -8,8 +8,8 @@ You are migrating **one** Yoyo app from Amplify to EKS. This repository is the *
 
 1. Read [README.md](README.md) for PR order and roles.
 2. Execute [docs/01-inventory.md](docs/01-inventory.md) — produce the inventory table first.
-3. [docs/02-app-prep.md](docs/02-app-prep.md) — Dockerfile, health, headers, `deploy/`.
-4. [docs/03-platform.md](docs/03-platform.md) — **cloud_catalog** Argo + Tekton PRs only (SM is Dev work in step 3 / rollout).
+3. [docs/02-app-prep.md](docs/02-app-prep.md) — Dockerfile, health, headers, `deploy/`, **Secrets Manager** (keys only in git).
+4. [docs/03-platform.md](docs/03-platform.md) — **cloud_catalog** Argo + Tekton PRs only (SM stays in steps 3–4 and [04-rollout](docs/04-rollout.md); see README step 2+).
 5. [docs/04-rollout.md](docs/04-rollout.md) — INT then PROD.
 6. [docs/05-cleanup.md](docs/05-cleanup.md) — after soak only.
 

@@ -2,9 +2,11 @@
 
 Reusable checklist for moving a Yoyo **Next.js** (or similar containerized) app from **AWS Amplify** to **EKS**, with **Tekton** (Kaniko build → ECR) and **Argo CD** (deploy via `cloud_catalog` + `yoyo-app` Helm values in the app repo).
 
-**Reference migration:** [yoyogroup/wiplatform-portal-nextjs](https://github.com/yoyogroup/wiplatform-portal-nextjs) (PRs [#145](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/145), [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148), [#153](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/153), [#154](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/154), [#155](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/155)).
+**Reference migration — wiplatform-portal-nextjs:** [#142](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/142) (Docker/health/headers), [#145](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/145) (deploy values), [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148) (ECR rename), [#153](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/153)–[#155](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/155).
 
-**Peer patterns:** [yoyo-deals-marketplace-nextjs](https://github.com/yoyogroup/yoyo-deals-marketplace-nextjs), [yoyo-avbob-nextjs](https://github.com/yoyogroup/yoyo-avbob-nextjs) `deploy/` + `Dockerfile`.
+**cloud_catalog (Tekton + Argo registration, not SM):** [#361](https://github.com/yoyogroup/cloud_catalog/pull/361) INT scaffold (Tekton on, Argo off), [#362](https://github.com/yoyogroup/cloud_catalog/pull/362) INT Argo enable, [#365](https://github.com/yoyogroup/cloud_catalog/pull/365) PROD scaffold.
+
+**Peer patterns:** [yoyo-deals-marketplace-nextjs](https://github.com/yoyogroup/yoyo-deals-marketplace-nextjs), [yoyo-avbob-nextjs](https://github.com/yoyogroup/yoyo-avbob-nextjs).
 
 ---
 
@@ -26,23 +28,23 @@ Argo CD (cloud_catalog app entry) → yoyo-app chart → Pods :3000
 Platform ingress/DNS → public host (replaces Amplify/CloudFront)
 ```
 
-Runtime env: **Helm `deployment.env.config`** (plain) + **ExternalSecret** (Secrets Manager keys listed in git only).  
-Build-time client config: **`NEXT_PUBLIC_*`** via Tekton `tekton.buildargs` (and matching Dockerfile `ARG`s).
+Runtime env: **Helm `deployment.env.config`** + **ExternalSecret** (SM key names in git only).  
+Build-time: **`NEXT_PUBLIC_*`** via `tekton.buildargs` + Dockerfile `ARG`s.
 
 ---
 
-## Recommended PR order (app repo)
+## Recommended PR order
 
 | Step | Doc | Typical PR focus | Who |
 | --- | --- | --- | --- |
-| 1 | [01-inventory](docs/01-inventory.md) | Inventory spreadsheet in PR description; no code yet | Dev |
-| 2 | [02-app-prep](docs/02-app-prep.md) | Dockerfile, health route, headers, `deploy/k8s/*/web/values.yaml` | Dev |
-| 3 | [03-platform](docs/03-platform.md) | **Separate PR(s)** in `cloud_catalog`: Argo app + Tekton; SM secrets; IRSA ticket | Dev opens; **platform lead approves** |
-| 4 | ECR name fix (if needed) | Align `deployment.image.repository` + `tekton.sceptrecommands` `ServiceName` with `${name}-${region}-${env}` | Dev ([wiplatform #148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148)) |
-| 5 | [04-rollout](docs/04-rollout.md) | INT deploy, soak, PROD, DNS cutover | Dev + Platform |
-| 6 | [05-cleanup](docs/05-cleanup.md) | Remove `amplify.yml`, `customHttp.yml`, Amplify docs | Dev (after soak) |
+| 1 | [01-inventory](docs/01-inventory.md) | Inventory table; no code yet | Dev |
+| 2 | [02-app-prep](docs/02-app-prep.md) | Docker, health, headers, `deploy/` values; **create SM secrets** (keys only in git) | Dev |
+| 3 | [03-platform](docs/03-platform.md) | **`cloud_catalog` only:** Argo + Tekton entries (#361-style); platform lead approves | Dev opens PR |
+| 4 | ECR name fix | Align ECR / Sceptre `ServiceName` with `${name}-${region}-${env}` if needed | Dev ([#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148)) |
+| 5 | [04-rollout](docs/04-rollout.md) | INT/PROD deploy, Argo enable follow-ups (#362), smoke, DNS | Dev + Platform |
+| 6 | [05-cleanup](docs/05-cleanup.md) | Remove Amplify artefacts after soak | Dev |
 
-**Rule:** One concern per PR where possible. **Never commit secret values** — only property names in `externalSecret.data`.
+One concern per PR where possible. Never commit secret **values**.
 
 ---
 
@@ -50,25 +52,21 @@ Build-time client config: **`NEXT_PUBLIC_*`** via Tekton `tekton.buildargs` (and
 
 | Task | Owner |
 | --- | --- |
-| Inventory Amplify env (all branches + overrides) | Dev |
-| App repo: Docker, health, headers, Helm values | Dev |
-| Create Secrets Manager secret (`<env>/pl-<env>-proxy/<APP_NAME>`) with keys from values | Dev (CPS); values **names only** in git |
-| IRSA, ingress, DNS, bucket policies | Platform (e.g. infra Jira) |
-| `cloud_catalog` Argo `disable: false`, Tekton registration | Dev PR; **platform lead** review/merge |
-| Tekton build trigger (`/cloud-deploy` in Slack) | Dev / on-call |
-| imagetag-updater branch ruleset exception | Platform / CPS |
+| Inventory, app repo Docker/deploy, **Secrets Manager** secret(s) | Dev |
+| `cloud_catalog` Argo + Tekton registration | Dev PR → **platform lead** |
+| IRSA, ingress, DNS, bucket policies | Platform |
+| imagetag-updater branch ruleset | Platform / CPS |
 
 ---
 
-## Review checklist (per PR)
+## Review checklist (pointers)
 
-Use the matching doc for detail; at review time confirm:
-
-- [ ] **Inventory:** Every env var classified (config / secret / build arg / drop). No guessed values (`UNKNOWN` flagged).
-- [ ] **App prep:** ECR name matches Tekton `servicename`; probes hit `/api/health`; `NEXT_PUBLIC_*` only in `tekton.buildargs`; no secrets in git.
-- [ ] **Platform:** Argo app name unique in namespace; SM path matches `externalSecret.awsSecretName`; ESO lists every SM key before enable.
-- [ ] **Rollout:** Argo Synced/Healthy; smoke login + critical pages; DNS verification documented.
-- [ ] **Cleanup:** Amplify only removed after EKS soak; `master` Amplify rollback considered until PROD cutover.
+| PR type | See |
+| --- | --- |
+| Inventory | [01-inventory](docs/01-inventory.md) exit criteria |
+| App prep | [02-app-prep](docs/02-app-prep.md) PR checklist |
+| cloud_catalog | [03-platform](docs/03-platform.md) PR checklist |
+| Rollout / cleanup | [04-rollout](docs/04-rollout.md), [05-cleanup](docs/05-cleanup.md) |
 
 ---
 
@@ -76,18 +74,12 @@ Use the matching doc for detail; at review time confirm:
 
 | File | Purpose |
 | --- | --- |
-| [docs/01-inventory.md](docs/01-inventory.md) | Amplify → EKS config inventory |
-| [docs/02-app-prep.md](docs/02-app-prep.md) | Dockerfile, health, headers, `deploy/` |
-| [docs/03-platform.md](docs/03-platform.md) | cloud_catalog, ECR, Tekton, Secrets Manager |
-| [docs/04-rollout.md](docs/04-rollout.md) | INT → PROD, DNS, rollback |
+| [docs/01-inventory.md](docs/01-inventory.md) | Config inventory |
+| [docs/02-app-prep.md](docs/02-app-prep.md) | Dockerfile, `deploy/`, SM (dev) |
+| [docs/03-platform.md](docs/03-platform.md) | cloud_catalog Argo + Tekton |
+| [docs/04-rollout.md](docs/04-rollout.md) | INT → PROD |
 | [docs/05-cleanup.md](docs/05-cleanup.md) | Decommission Amplify |
-| [docs/gotchas.md](docs/gotchas.md) | Lessons from wiplatform PRs |
-| [templates/](templates/) | Copy-paste starters (placeholders) |
-| [tickets.md](tickets.md) | Standard Jira ticket set |
-| [AGENTS.md](AGENTS.md) | Instructions for coding agents |
-
----
-
-## Agents
-
-If you are a Cloud Agent applying this to an app repo, read **AGENTS.md** and follow docs **01 → 05** in order.
+| [docs/gotchas.md](docs/gotchas.md) | wiplatform lessons |
+| [templates/](templates/) | Starters (placeholders) |
+| [tickets.md](tickets.md) | Jira stubs |
+| [AGENTS.md](AGENTS.md) | Agent instructions |

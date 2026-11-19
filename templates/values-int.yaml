@@ -1,13 +1,20 @@
 # Template: deploy/k8s/int/web/values.yaml
 # Replace <PLACEHOLDERS>. Never commit secret values — SM only.
-# Peer: yoyo-deals-marketplace-nextjs deploy/k8s/int/web/values.yaml
+# For full skeleton: copy from yoyo-deals-marketplace-nextjs deploy/k8s/int/web/values.yaml (structure, not values).
 
 name: <APP_NAME>
 project: <APP_NAME>
 
 env:
   environment: int
-  region: <AWS_REGION>   # e.g. eu-west-1
+  region: <AWS_REGION>
+
+# serviceMonitor:
+#   enabled: false
+# prometheusRules:
+#   enabled: false
+# alerting:
+#   enabled: false
 
 deployment:
   enabled: true
@@ -23,12 +30,16 @@ deployment:
       port: 3000
     initialDelaySeconds: 30
     periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
   readinessProbe:
     httpGet:
       path: /api/health
       port: 3000
     initialDelaySeconds: 5
     periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
   resources:
     requests:
       cpu: 100m
@@ -45,11 +56,30 @@ deployment:
       HOSTNAME: "0.0.0.0"
       NODE_OPTIONS: "--max-old-space-size=179"
       YOYO_APP_ORIGIN: https://<INT_HOST>
-      # Add plain config from inventory (01-inventory.md)
     secret:
-      # Example — key names only; values in SM
       BETTER_AUTH_SECRET:
         name: <APP_NAME>
+  # topologySpreadConstraints:
+  #   topologyKey: topology.kubernetes.io/zone
+  #   whenUnsatisfiable: ScheduleAnyway
+  #   maxSkew: 1
+  # podSecurityContext:
+  #   runAsNonRoot: true
+  #   runAsUser: 1000
+  #   runAsGroup: 1000
+  #   fsGroup: 1000
+  # securityContext:
+  #   allowPrivilegeEscalation: false
+  #   capabilities:
+  #     drop: ["ALL"]
+
+# poddisruptionbudget:
+#   enabled: false
+
+# service:
+#   enabled: true
+#   type: ClusterIP
+#   port: 3000
 
 serviceAccount:
   create: true
@@ -66,10 +96,9 @@ externalSecret:
   data:
     - secretKey: BETTER_AUTH_SECRET
       property: BETTER_AUTH_SECRET
-    # Mirror every deployment.env.secret key
 
 job:
-  enabled: false   # true if you run DB migrations like Marketplace
+  enabled: false
 
 tekton:
   buildResources:
@@ -92,10 +121,9 @@ tekton:
   docker:
     dockerfile: Dockerfile
   buildargs:
-    # NEXT_PUBLIC_* and NODE_OPTIONS for Kaniko — see 02-app-prep.md
     - NODE_OPTIONS=--max-old-space-size=1536
   sceptrecommands:
-    - "sceptre --var ServiceName=<APP_NAME>-<AWS_REGION>-int --var template_bucket_name=<INT_CF_TEMPLATE_BUCKET> launch int/svc/services/ecr -y"
+    - "sceptre --var ServiceName=<APP_NAME>-<AWS_REGION>-int --var region=<AWS_REGION> --var template_bucket_name=<INT_CF_TEMPLATE_BUCKET> launch int/svc/services/ecr -y"
   valuesfile: deploy/k8s/int/web/values.yaml
   gitrepository: git@github.com:yoyogroup/<REPO>.git
   branch: <INT_TEKTON_BRANCH>

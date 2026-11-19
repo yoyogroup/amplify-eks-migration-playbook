@@ -25,7 +25,7 @@ Patterns from wiplatform + Avbob/Deals:
 - **Multi-stage:** `builder` (Node Alpine) → `runner` (minimal Alpine + `node` binary only)
 - **Pinned Node:** match `.nvmrc` / `engines` (wiplatform moved to **Node 24** in PR #154)
 - **`DOCKER_BUILD=1`:** enables `output: 'standalone'` in `next.config`
-- **Build:** `npm ci` → `next build --webpack` (not Turbopack default under Tekton **4Gi** — OOM in wiplatform Dockerfile comments)
+- **Build:** `npm ci` → optional codegen (e.g. `npm run generate:api`) → **one** `npx next build --webpack` (not `npm run build` + `next build`; not Turbopack under Tekton **4Gi**)
 - **`NEXT_WEBPACK_PARALLELISM=1`**, builder `NODE_OPTIONS=--max-old-space-size=1536` (Tekton limit headroom for Kaniko)
 - **Offline build:** self-host fonts / no runtime fetch to Google Fonts in Docker (wiplatform `layout.tsx` in PR #142)
 - **Runner:** user **1000**, port **3000**, `CMD ["node", "server.js"]`
@@ -83,6 +83,21 @@ Mismatch caused Kaniko push failures — fixed in wiplatform PR [#148](https://g
 ### S3 / AWS SDK
 
 - Prefer **IRSA** on ServiceAccount; omit `S3_ACCESS_KEY_*` from secrets when code uses default credential chain (wiplatform PR #145 `buildS3ClientConfig`)
+
+### `job.enabled` vs HPA (INT)
+
+If **`job.enabled: true`** (migration hook, Marketplace pattern), the chart runs a hook Job on an earlier Argo sync wave than the web Deployment. **HPA** can land at sync wave 0 while the Deployment is still blocked — HPA stays **Degraded** (“target not found”) and Argo may not progress the Job as expected.
+
+**Marketplace INT** keeps `autoscaling.enabled: false` with `job.enabled: true` and documents why ([yoyo-deals-marketplace-nextjs](https://github.com/yoyogroup/yoyo-deals-marketplace-nextjs) `deploy/k8s/int/web/values.yaml` comments).
+
+**Rule:** On INT, keep **HPA off** until you understand hook vs Deployment ordering; wiplatform uses `job.enabled: false` (no DB migrate).
+
+### Secrets Manager (Dev, app repo rollout)
+
+Before Argo `disable: false` in cloud_catalog:
+
+1. Create `int/pl-int-proxy/<APP_NAME>` (then PROD path) with every property in `externalSecret.data`.
+2. Never commit values; verify ExternalSecret **Synced** after first deploy.
 
 ---
 

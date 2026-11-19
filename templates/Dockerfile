@@ -29,8 +29,12 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
 
-# Webpack, not Turbopack, under Tekton ~4Gi Kaniko step (see docs/gotchas.md).
-RUN npm run build \
+# Optional codegen (wiplatform requires `npm run generate:api`). Apps without codegen: use only `npx next build --webpack`.
+# RUN npm run generate:api
+#
+# One `next build` only — never chain `npm run build` and `next build` (duplicate compile).
+# Webpack, not Turbopack, under Tekton ~4Gi (docs/gotchas.md).
+RUN npm run generate:api \
   && npx next build --webpack \
   && rm -rf .next/cache \
   && mv .next/static .next/standalone/.next/static \

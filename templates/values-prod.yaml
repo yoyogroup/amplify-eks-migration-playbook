@@ -1,5 +1,5 @@
 # Template: deploy/k8s/prod/web/values.yaml
-# PROD sizing often larger than INT (wiplatform: 1Gi/3Gi, HPA 2–4).
+# Copy optional top-level blocks from peer INT/PROD (serviceMonitor, service, securityContext, PDB).
 
 name: <APP_NAME>
 project: <APP_NAME>
@@ -13,16 +13,25 @@ deployment:
   image:
     repository: "<AWS_ACCOUNT_PROD>.dkr.ecr.<AWS_REGION>.amazonaws.com/<APP_NAME>-<AWS_REGION>-prod"
     tag: "bootstrap-pending"
+    pullPolicy: IfNotPresent
   replicaCount: 2
   containerPort: 3000
   livenessProbe:
     httpGet:
       path: /api/health
       port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
   readinessProbe:
     httpGet:
       path: /api/health
       port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
   resources:
     requests:
       cpu: 100m
@@ -38,7 +47,6 @@ deployment:
   env:
     config:
       YOYO_APP_ORIGIN: https://<PROD_HOST>
-      # Fill from Amplify prod inventory — mark UNKNOWN until confirmed
     secret:
       BETTER_AUTH_SECRET:
         name: <APP_NAME>
@@ -60,11 +68,30 @@ job:
   enabled: false
 
 tekton:
+  buildResources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+  kanikoBuildFlags:
+    - "--use-new-run"
+    - "--snapshot-mode=redo"
+  kanikoCache: true
   awsaccountid: "<AWS_ACCOUNT_PROD>"
-  sceptrecommands:
-    - "sceptre --var ServiceName=<APP_NAME>-<AWS_REGION>-prod --var template_bucket_name=<PROD_CF_TEMPLATE_BUCKET> launch prod/svc/services/ecr -y"
-  valuesfile: deploy/k8s/prod/web/values.yaml
-  gitrepository: git@github.com:yoyogroup/<REPO>.git
-  branch: master
+  tasks:
+    - fetch-repository
+    - create-aws-resources
+    - build-image
+    - imagetag-updater
+  docker:
+    dockerfile: Dockerfile
   buildargs:
     - NODE_OPTIONS=--max-old-space-size=1536
+  sceptrecommands:
+    - "sceptre --var ServiceName=<APP_NAME>-<AWS_REGION>-prod --var region=<AWS_REGION> --var template_bucket_name=<PROD_CF_TEMPLATE_BUCKET> launch prod/svc/services/ecr -y"
+  valuesfile: deploy/k8s/prod/web/values.yaml
+  gitrepository: git@github.com:yoyogroup/<REPO>.git
+  # PROD Tekton branch: master or main — match cloud_catalog valueFileRepotargetRevision and repo default.
+  branch: <PROD_TEKTON_BRANCH>

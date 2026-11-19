@@ -1,102 +1,113 @@
 # 03 — Platform wiring (cloud_catalog + AWS)
 
-App repo values are **inert** until Platform registers Argo + Tekton and secrets/IRSA exist.
+App repo values are **inert** until `cloud_catalog` registers Argo + Tekton. **Secrets Manager** and most rollout checks are **Dev** work in the app repo (see [02-app-prep](02-app-prep.md), [04-rollout](04-rollout.md)); this doc covers **catalog PRs** and shared AWS patterns.
 
 ---
 
-## cloud_catalog Argo application
+## cloud_catalog PR split (#361 / #362 / #365)
 
-**Repo:** [yoyogroup/cloud_catalog](https://github.com/yoyogroup/cloud_catalog)
+| PR | What | `disable` typical |
+| --- | --- | --- |
+| **[#361](https://github.com/yoyogroup/cloud_catalog/pull/361)** (INT scaffold) | Argo app + **Tekton** entry + **commented** ingress placeholder | Argo **`true`**, Tekton **`false`** |
+| **[#362](https://github.com/yoyogroup/cloud_catalog/pull/362)** (INT enable) | Flip workload Argo only | Argo **`false`** after real image tag + SM |
+| **[#365](https://github.com/yoyogroup/cloud_catalog/pull/365)** (PROD scaffold) | PROD Argo + Tekton (mirror #361) | Argo **`true`**, Tekton **`false`** |
 
-Pattern (wiplatform PR [#362](https://github.com/yoyogroup/cloud_catalog/pull/362), building on #361):
+**Why Tekton before Argo:** First build can run while image tag is still `bootstrap-pending`; enabling Argo too early causes ImagePullBackOff (#361). Tekton `disable: false` wires the shared EventListener so pushes to the app branch start PipelineRuns.
 
-1. Add app entry under `deploy/intergration/eu-west-1/applications.yaml` (and prod equivalent when ready)
-2. Start with `disable: true`; flip to `disable: false` when:
-   - First Tekton image exists in ECR
-   - SM secret exists with all `externalSecret.data` properties
-   - Values file on the branch Argo watches
-3. App name example: `<APP_NAME>-eu-west-1-int` (distinct from legacy kustomize names in same namespace)
-4. Namespace example: `int-eu-west-1-intergrations` (confirm per env in cloud_catalog peers)
-5. **Ingress** may stay disabled/commented until infra ticket (wiplatform: YOYOINFRA-2816) — cluster-only testing via port-forward until then
+### Argo application (workload)
+
+**INT:** `deploy/intergration/eu-west-1/applications.yaml`  
+**PROD:** `deploy/production/eu-west-1/za-platform-prod/applications.yaml`
+
+Copy a peer block (e.g. `yoyoDealsMarketplaceWeb` / `wiplatformPortalNextjsWeb`):
+
+- Chart **`yoyo-app`** — use the **same version** as the peer entry on `main` (do not hardcode; read current catalog).
+- `valueFileRepo` → app git URL; `valueFileRepotargetRevision` → branch Argo watches (`development`, `integration`, `master`, or `main` per repo).
+- `valueFilePath`: `deploy/k8s/int/web/values.yaml` (or `prod/...`).
+- Namespace INT: e.g. `<INT_NAMESPACE>` (wiplatform: `int-eu-west-1-intergrations`).
+- Namespace PROD: e.g. `<PROD_NAMESPACE>` (wiplatform #365: `prod-eu-west-1-intergrations`).
+
+Flip `disable: false` only when SM keys exist, ExternalSecret can sync, and `deployment.image.tag` is a real ECR tag ([#362](https://github.com/yoyogroup/cloud_catalog/pull/362)).
 
 ### Who
 
-- Dev opens PR; **platform lead** (e.g. Paul Patterson on wiplatform #362) approves
-- Dev merges when approved (per team norm)
+- Dev opens `cloud_catalog` PR; **platform lead** reviews/merges (team norm).
+
+---
+
+## Tekton registration (`pipelines.yaml`)
+
+Tekton is **not** only in `applications.yaml` — register the **`yoyo-app-tekton`** Application in:
+
+| Env | File |
+| --- | --- |
+| INT | `deploy/intergration/pipelines/pipelines.yaml` |
+| PROD | `deploy/production/pipelines/pipelines.yaml` |
+
+Copy the nearest peer `*WebTekton` entry (e.g. `yoyoDealsMarketplaceWebTekton` on `main`):
+
+| Field | Mirror from peer |
+| --- | --- |
+| Chart | `yoyo-app-tekton` (same **version** as peer on `main`) |
+| `helmValues.eventListener.mode` | **`shared`** (INT/PROD EventListener pool) |
+| App repo + values path | Same as workload Argo entry |
+| `disable` on Tekton app | **`false`** when ready for first build (even while workload Argo stays `disable: true`) |
+| Application `name` | Keep Helm release name ≤ 53 chars (see comments in `pipelines.yaml` for long names) |
+
+Tekton reads build settings from the app repo values embedded in the catalog entry (`deploy/k8s/*/web/values.yaml` → `tekton.*` block).
+
+**Trigger:** push to `tekton.branch` or `/cloud-deploy <APP_NAME>-<REGION>-<env>` in Slack.
+
+---
+
+## Commented ingress (#361)
+
+Optional first PR appends a **commented** host block under:
+
+`deploy/intergration/eu-west-1/ingress/values.yaml` → `ingresses:`
+
+Leave it commented until Platform has certs, ALB group, and DNS plan (wiplatform: infra ticket + no early external-dns steal). PROD forward/ingress may be a separate catalog PR ([#365](https://github.com/yoyogroup/cloud_catalog/pull/365) notes [#364](https://github.com/yoyogroup/cloud_catalog/pull/364) for prod ingress).
 
 ---
 
 ## ECR repository
 
-Created by Tekton task **`create-aws-resources`** via Sceptre:
+Created by Tekton task **`create-aws-resources`** via Sceptre (vars from app `tekton.sceptrecommands`):
 
 ```text
 sceptre --var ServiceName=<APP_NAME>-<REGION>-<ENV> \
+  --var region=<AWS_REGION> \
   --var template_bucket_name=<PLATFORM_TEKTON_CF_BUCKET> \
-  launch int/svc/services/ecr -y
+  launch <ENV>/svc/services/ecr -y
 ```
 
-- Bucket name is **environment-specific** (INT example pattern: `yoyo-platform-int-cloudformation-stack-tekton` — confirm in peer values)
-- Kaniko pushes to `<APP_NAME>-<REGION>-<ENV>` and cache repo `<APP_NAME>-<REGION>-<ENV>/cache`
-- Wrong `ServiceName` → empty/wrong ECR repo and push denied (#148)
-
-Orphan stacks from a first failed naming attempt can be left for Platform cleanup (document in app `deploy/README.md`).
+- Confirm `template_bucket_name` and `launch` path from a peer app’s values file.
+- Kaniko pushes to `<APP_NAME>-<REGION>-<ENV>` and cache repo `…/cache`.
+- Wrong `ServiceName` → push denied (wiplatform [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148)).
 
 ---
 
-## Tekton pipeline
-
-Configured via `yoyo-app-tekton` chart values embedded in app `deploy/k8s/*/web/values.yaml`:
+## Tekton pipeline (app repo `tekton:` block)
 
 | Field | Typical |
 | --- | --- |
-| `tekton.branch` | INT: `development` or `integration`; PROD: `master` |
-| `tekton.valuesfile` | `deploy/k8s/int/web/values.yaml` |
-| `tekton.gitrepository` | `git@github.com:yoyogroup/<REPO>.git` |
+| `tekton.branch` | INT branch per repo; PROD: `master` or `main` |
+| `tekton.valuesfile` | `deploy/k8s/{int,prod}/web/values.yaml` |
 | `tekton.tasks` | `fetch-repository`, `create-aws-resources`, `build-image`, `imagetag-updater` |
-| `tekton.docker.dockerfile` | `Dockerfile` |
-| `tekton.buildResources` | request 2Gi, limit 4Gi (cluster max) |
-| `tekton.awsaccountid` | **Quoted string** (unquoted YAML → float breaks ECR host) |
-
-**Trigger:** Slack `/cloud-deploy <APP_NAME>-<REGION>-<ENV>` (see #cloudplatform-deployment).
-
-**Charts:** Pin `yoyo-app` / `yoyo-app-tekton` versions in cloud_catalog (wiplatform cited **1.0.19** / **0.5.0** in PR #145).
+| `tekton.buildResources` | request 2Gi, limit 4Gi |
+| `tekton.awsaccountid` | **Quoted string** |
 
 ---
 
-## Secrets Manager naming
+## Secrets Manager (Dev — not a cloud_catalog change)
 
-Observed pattern (placeholders):
-
-```text
-<ENV>/pl-<ENV>-proxy/<APP_NAME>
-```
-
-Examples from wiplatform **shape only**:
-
-- INT: `int/pl-int-proxy/<APP_NAME>`
-- PROD: `prod/pl-prod-proxy/<APP_NAME>`
-
-**Legacy paths:** Older apps may have `…/<short-name>` without repo suffix — use a **new** secret for the Next/EKS app if a legacy portal still consumes the old path (wiplatform deploy README).
-
-### Dev workflow
-
-1. List required properties from `externalSecret.data` in values YAML
-2. Create/update secret in AWS Console or approved tooling
-3. **Never** paste values into git or PR body
-4. ExternalSecret must stay **Synced** before Argo shows Healthy
-
-IRSA role for the pod may need `secretsmanager:GetSecretValue` on the new secret ARN only.
+Pattern: `<ENV>/pl-<ENV>-proxy/<APP_NAME>`. Create keys listed in `externalSecret.data` before flipping Argo `disable: false`. Details: [02-app-prep](02-app-prep.md), [04-rollout](04-rollout.md).
 
 ---
 
 ## imagetag-updater
 
-On successful build, bot commits `deployment.image.tag` to `tekton.branch` and pushes.
-
-- **Branch protection:** needs ruleset exception for `ciyoyogroup/imagetag-updater` (wiplatform CPS-1876)
-- Until then: manual PR to pin tag after each build
-- PROD: replace `bootstrap-pending` before enabling Argo (#153)
+Bot commits `deployment.image.tag` to `tekton.branch`. Branch protection needs `ciyoyogroup/imagetag-updater` exception (wiplatform CPS-1876); until then, manual tag PRs.
 
 ---
 
@@ -104,18 +115,16 @@ On successful build, bot commits `deployment.image.tag` to `tekton.branch` and p
 
 | Work | Track via |
 | --- | --- |
-| IRSA role + S3 bucket policy | Infra Jira (wiplatform: YOYOINFRA-2816) |
-| Ingress + public DNS + TLS | Same + cloud_catalog ingress block |
-| Legacy hostname 301 redirects | Ingress-only (wiplatform: YOYOINFRA-2614) |
-| EKS egress to on-prem APIs | Network ticket if pods call internal hosts (#153 datamart) |
-| imagetag-updater bot bypass | CPS/platform ruleset |
+| IRSA, S3, ingress, DNS | Infra Jira |
+| imagetag-updater ruleset | CPS / Platform |
+| Legacy 301 redirects | Ingress catalog PR |
 
 ---
 
-## PR checklist (platform)
+## PR checklist (`cloud_catalog` only)
 
-- [ ] Argo entry matches app `name`, repo URL, values path, target revision = Tekton branch
-- [ ] SM secret created with **all** ESO properties
-- [ ] ECR repo exists after first `create-aws-resources`
-- [ ] Tekton build green; tag committed or manually pinned
-- [ ] `disable: false` only after above
+- [ ] Workload + Tekton entries added; chart versions match current peer on `main`
+- [ ] Workload Argo `disable: true` on first scaffold unless image + tag already valid
+- [ ] Tekton `disable: false` when builds should run
+- [ ] `valueFileRepotargetRevision` matches app `tekton.branch`
+- [ ] Ingress left commented until Platform ready (#361)

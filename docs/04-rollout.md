@@ -5,7 +5,7 @@
 ## Phase A — INT
 
 1. Merge app prep PR(s) to INT Tekton branch (`development` / `integration`)
-2. Platform: SM secret, IRSA (even if placeholder), Argo `disable: false` when ready ([#362](https://github.com/yoyogroup/cloud_catalog/pull/362) pattern)
+2. Dev: SM secret + keys; Platform: IRSA as needed. After [#361](https://github.com/yoyogroup/cloud_catalog/pull/361) scaffold + first image tag, flip Argo `disable: false` ([#362](https://github.com/yoyogroup/cloud_catalog/pull/362))
 3. Run Tekton: `/cloud-deploy <APP_NAME>-<REGION>-int`
 4. Verify:
    - [ ] PipelineRun succeeded (ECR push + imagetag-updater or manual tag PR)
@@ -25,13 +25,16 @@
 
 Often on `master` with stricter sequencing (#153):
 
-1. Cherry-pick or merge migration to `master` without unreleased feature code if needed
+1. Cherry-pick or merge migration to **PROD git branch** (`master` or `main` per repo) without unreleased feature code if needed
 2. Fill PROD values from **Amplify prod** truth (no UNKNOWN gaps — or explicit legacy exceptions documented)
-3. Create PROD SM secret (all `externalSecret.data` keys)
-4. First PROD Tekton build; pin real `deployment.image.tag`
-5. Merge cloud_catalog PROD Argo entry; `disable: false` after checklist (wiplatform deploy README “Pre-cutover verification”)
-6. Argo Synced/Healthy + smoke (login, critical APIs, egress to dependencies)
-7. **DNS cutover** (Platform): public hostname from Amplify/CloudFront → ALB/backend target group
+3. Create PROD SM secret (all `externalSecret.data` keys) — **Dev**
+4. Merge **`cloud_catalog` [#365](https://github.com/yoyogroup/cloud_catalog/pull/365)** scaffold (pattern mirrors #361):
+   - **Argo workload:** `deploy/production/eu-west-1/za-platform-prod/applications.yaml` — `disable: true` initially; `valueFileRepotargetRevision` = app PROD branch (`master` for wiplatform)
+   - **Tekton:** `deploy/production/pipelines/pipelines.yaml` — `disable: false`; shared EventListener; chart fields copied from peer PROD Tekton entry
+   - **Namespace:** e.g. `<PROD_NAMESPACE>` (wiplatform: `prod-eu-west-1-intergrations`)
+5. First PROD Tekton build; pin real `deployment.image.tag` on that branch
+6. Follow-up catalog PR: workload `disable: false` after checklist (same idea as INT #362)
+7. Argo Synced/Healthy + smoke; **DNS cutover** (Platform)
 
 ---
 

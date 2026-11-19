@@ -9,7 +9,7 @@ You are migrating **one** Yoyo app from Amplify to EKS. This repository is the *
 1. Read [README.md](README.md) for PR order and roles.
 2. Execute [docs/01-inventory.md](docs/01-inventory.md) — produce the inventory table first.
 3. [docs/02-app-prep.md](docs/02-app-prep.md) — Dockerfile, health, headers, `deploy/`.
-4. [docs/03-platform.md](docs/03-platform.md) — cloud_catalog PR + SM (separate repo PRs).
+4. [docs/03-platform.md](docs/03-platform.md) — **cloud_catalog** Argo + Tekton PRs only (SM is Dev work in step 3 / rollout).
 5. [docs/04-rollout.md](docs/04-rollout.md) — INT then PROD.
 6. [docs/05-cleanup.md](docs/05-cleanup.md) — after soak only.
 
@@ -48,10 +48,10 @@ Every migration PR should include:
 
 ## Reference repos (read-only)
 
-- [wiplatform-portal-nextjs](https://github.com/yoyogroup/wiplatform-portal-nextjs) — PRs 145, 148, 153, 154, 155
-- [yoyo-deals-marketplace-nextjs](https://github.com/yoyogroup/yoyo-deals-marketplace-nextjs) — `deploy/`, migration Job pattern
+- [wiplatform-portal-nextjs](https://github.com/yoyogroup/wiplatform-portal-nextjs) — **#142** (Docker/health/headers), **#145** (values), **#148** (ECR), **#153–155** (prod/cleanup)
+- [yoyo-deals-marketplace-nextjs](https://github.com/yoyogroup/yoyo-deals-marketplace-nextjs) — `deploy/`, migration Job + HPA note
 - [yoyo-avbob-nextjs](https://github.com/yoyogroup/yoyo-avbob-nextjs) — Docker/Next patterns
-- [cloud_catalog](https://github.com/yoyogroup/cloud_catalog) — PR 362 Argo enable pattern
+- [cloud_catalog](https://github.com/yoyogroup/cloud_catalog) — **#361** INT scaffold (Argo off, Tekton on), **#362** INT Argo enable, **#365** PROD scaffold
 
 If a repo is not accessible, state that in your PR and proceed from peer docs + this playbook.
 

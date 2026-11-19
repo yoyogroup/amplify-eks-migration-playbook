@@ -52,6 +52,7 @@ Every migration PR should include:
 - [yoyo-deals-marketplace-nextjs](https://github.com/yoyogroup/yoyo-deals-marketplace-nextjs) — `deploy/`, migration Job + HPA note
 - [yoyo-avbob-nextjs](https://github.com/yoyogroup/yoyo-avbob-nextjs) — Docker/Next patterns
 - [cloud_catalog](https://github.com/yoyogroup/cloud_catalog) — **#361** INT scaffold (Argo off, Tekton on), **#362** INT Argo enable, **#365** PROD scaffold
+- [Kubernetes Application Onboarding Guide](https://yoyogroup-com.atlassian.net/wiki/spaces/~7120201b205b083b424b22835be38766bee0da/pages/1852702721/Kubernetes+Application+Onboarding+Guide) — Kubernetes Application Onboarding Guide (Cloud Platform, Confluence): general guide to taking any app from a Git repo to a validated deployment on the YoYo Kubernetes platform with Tekton, Helm, Argo CD and yoyo-cloud. Still a draft pending Cloud Platform approval. This playbook covers the Amplify-specific parts.
 
 If a repo is not accessible, state that in your PR and proceed from peer docs + this playbook.
 

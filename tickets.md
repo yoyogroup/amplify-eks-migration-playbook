@@ -15,8 +15,8 @@ Add Dockerfile (standalone Next), `/api/health`, move `customHttp.yml` headers i
 **AC:** CI green; container health 200; static headers on `/login` in CI smoke.
 
 **[APP] Helm deploy values (INT + PROD)**  
-Add `deploy/k8s/int/web/values.yaml` and prod twin; `deploy/README.md` with SM key names only.  
-**AC:** YAML parses; ECR names match `${name}-${region}-${env}`; externalSecret keys listed.
+Add `deploy/k8s/int/web/values.yaml` and prod twin; `deployment.image.repository` and `tekton.sceptrecommands` `ServiceName` both use `${name}-${region}-${env}` on first commit; `deploy/README.md` with SM key names only.  
+**AC:** YAML parses; ECR/Sceptre naming aligned per gotchas; externalSecret keys listed.
 
 ---
 

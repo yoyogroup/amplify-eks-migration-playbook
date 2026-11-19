@@ -2,7 +2,7 @@
 
 Reusable checklist for moving a Yoyo **Next.js** (or similar containerized) app from **AWS Amplify** to **EKS**, with **Tekton** (Kaniko build → ECR) and **Argo CD** (deploy via `cloud_catalog` + `yoyo-app` Helm values in the app repo).
 
-**Reference migration — wiplatform-portal-nextjs:** [#142](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/142) (Docker/health/headers), [#145](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/145) (deploy values), [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148) (ECR rename), [#153](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/153)–[#155](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/155).
+**Reference migration — wiplatform-portal-nextjs:** [#142](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/142) (Docker/health/headers), [#145](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/145) (deploy values), [#153](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/153)–[#155](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/155). ECR naming lesson: [gotchas](docs/gotchas.md) / [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148).
 
 **cloud_catalog (Tekton + Argo registration, not SM):** [#361](https://github.com/yoyogroup/cloud_catalog/pull/361) INT scaffold (Tekton on, Argo off), [#362](https://github.com/yoyogroup/cloud_catalog/pull/362) INT Argo enable, [#365](https://github.com/yoyogroup/cloud_catalog/pull/365) PROD scaffold.
 
@@ -38,11 +38,10 @@ Build-time: **`NEXT_PUBLIC_*`** via `tekton.buildargs` + Dockerfile `ARG`s.
 | Step | Doc | Typical PR focus | Who |
 | --- | --- | --- | --- |
 | 1 | [01-inventory](docs/01-inventory.md) | Inventory table; no code yet | Dev |
-| 2 | [02-app-prep](docs/02-app-prep.md) | Docker, health, headers, `deploy/` values; **create SM secrets** (keys only in git) | Dev |
-| 3 | [03-platform](docs/03-platform.md) | **`cloud_catalog` only:** Argo + Tekton entries (#361-style); platform lead approves | Dev opens PR |
-| 4 | ECR name fix | Align ECR / Sceptre `ServiceName` with `${name}-${region}-${env}` if needed | Dev ([#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148)) |
-| 5 | [04-rollout](docs/04-rollout.md) | INT/PROD deploy, Argo enable follow-ups (#362), smoke, DNS | Dev + Platform |
-| 6 | [05-cleanup](docs/05-cleanup.md) | Remove Amplify artefacts after soak | Dev |
+| 2 | [02-app-prep](docs/02-app-prep.md) | Docker, health, headers, `deploy/` values (**ECR image repo + Sceptre `ServiceName` = `${name}-${region}-${env}` from the first PR** — [gotchas](docs/gotchas.md)); **SM secrets** (key names only) | Dev |
+| 3 | [03-platform](docs/03-platform.md) | **`cloud_catalog` only:** Argo + Tekton (#361-style); Tekton push target must match step 2 names; platform lead approves | Dev opens PR |
+| 4 | [04-rollout](docs/04-rollout.md) | INT/PROD deploy, Argo enable follow-ups (#362), smoke, DNS | Dev + Platform |
+| 5 | [05-cleanup](docs/05-cleanup.md) | Remove Amplify artefacts after soak | Dev |
 
 One concern per PR where possible. Never commit secret **values**.
 

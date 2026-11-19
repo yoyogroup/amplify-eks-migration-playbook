@@ -25,7 +25,7 @@ Use [templates/](templates/) as starting points; adapt to the app’s package ma
 | **Never commit secrets** | Only SM property **names** in `externalSecret.data`. |
 | **Never paste real SM values, client secrets, account IDs, bucket names, or internal hostnames into the playbook repo** | Use placeholders in docs/PRs when examples are needed. |
 | **One PR per step** when possible | Easier review; matches wiplatform PR chain. |
-| **ECR name = `name-region-env`** | #148 failure mode. |
+| **ECR + Sceptre `ServiceName` = `name-region-env` from first deploy PR** | Not a follow-up step; #148 if wrong. |
 | **`NEXT_PUBLIC_*` only in `tekton.buildargs`** | Not runtime `deployment.env`. |
 | **Do not enable Argo `disable: false`** until SM keys + first image exist | #362 / ExternalSecret strictness (#153). |
 
@@ -48,7 +48,7 @@ Every migration PR should include:
 
 ## Reference repos (read-only)
 
-- [wiplatform-portal-nextjs](https://github.com/yoyogroup/wiplatform-portal-nextjs) — **#142** (Docker/health/headers), **#145** (values), **#148** (ECR), **#153–155** (prod/cleanup)
+- [wiplatform-portal-nextjs](https://github.com/yoyogroup/wiplatform-portal-nextjs) — **#142** (Docker/health/headers), **#145** (values), **#153–155** (prod/cleanup); **#148** = ECR naming gotcha only
 - [yoyo-deals-marketplace-nextjs](https://github.com/yoyogroup/yoyo-deals-marketplace-nextjs) — `deploy/`, migration Job + HPA note
 - [yoyo-avbob-nextjs](https://github.com/yoyogroup/yoyo-avbob-nextjs) — Docker/Next patterns
 - [cloud_catalog](https://github.com/yoyogroup/cloud_catalog) — **#361** INT scaffold (Argo off, Tekton on), **#362** INT Argo enable, **#365** PROD scaffold

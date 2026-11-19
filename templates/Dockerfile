@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Template — copy to app repo root; replace <NODE_VERSION> with .nvmrc pin (e.g. 24.22.3-alpine3.24).
-# Reference: wiplatform-portal-nextjs PR #142; yoyo-avbob-nextjs / yoyo-deals-marketplace-nextjs (npm).
-# pnpm apps: follow yoyo-avbob-nextjs Dockerfile (corepack, pnpm install, `pnpm exec next build --webpack`).
+# npm template basis: wiplatform-portal-nextjs PR #142.
+# pnpm references: yoyo-avbob-nextjs, yoyo-deals-marketplace-nextjs (corepack, pnpm install, `pnpm exec next build --webpack`).
 
 ARG NODE_VERSION=<NODE_VERSION>
 ARG ALPINE_VERSION=3.24

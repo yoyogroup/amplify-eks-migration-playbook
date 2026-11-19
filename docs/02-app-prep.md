@@ -67,12 +67,17 @@ Follow **yoyo-deals-marketplace** / **yoyo-avbob** shape:
 | `job.enabled` | `false` if no DB migration hook (wiplatform); `true` if Marketplace-style migrate Job |
 | `tekton` | `branch`, `valuesfile`, `buildargs`, `sceptrecommands`, Kaniko resources **2Gi request / 4Gi limit** |
 
-### ECR naming (critical)
+### ECR naming (set correctly in the first deploy-values PR)
 
 Tekton `servicename` = `{{ .Values.name }}-{{ .Values.env.region }}-{{ .Values.env.environment }}` (cloud_catalog `yoyo-app-tekton`).
 
-`deployment.image.repository`, `tekton.sceptrecommands` `ServiceName`, and optional `job.image.repository` **must match**.  
-Mismatch caused Kaniko push failures — fixed in wiplatform PR [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148).
+From day one, align:
+
+- `deployment.image.repository` (ECR host + repo suffix)
+- `tekton.sceptrecommands` → `ServiceName=<name>-<region>-<env>`
+- optional `job.image.repository`
+
+All three use **`${name}-${region}-${env}`**. Do not plan a later “ECR rename” PR — a mismatch breaks Kaniko push ([#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148), [gotchas](gotchas.md)).
 
 ### `NEXT_PUBLIC_*`
 

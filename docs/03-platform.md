@@ -82,8 +82,8 @@ sceptre --var ServiceName=<APP_NAME>-<REGION>-<ENV> \
 ```
 
 - Confirm `template_bucket_name` and `launch` path from a peer app’s values file.
+- **`ServiceName` must already match** app `name` + `env.region` + `env.environment` in the app repo values **before** this catalog PR merges (see [02-app-prep](02-app-prep.md), [gotchas](gotchas.md) / [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148)).
 - Kaniko pushes to `<APP_NAME>-<REGION>-<ENV>` and cache repo `…/cache`.
-- Wrong `ServiceName` → push denied (wiplatform [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148)).
 
 ---
 

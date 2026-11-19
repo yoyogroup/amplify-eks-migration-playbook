@@ -1,5 +1,18 @@
 # Amplify → EKS migration playbook
 
+## New here? Start with the guide
+
+~10 minutes, plain English, for devs, leads, and QA:
+
+1. [guide/overview](guide/overview.md) — what changes  
+2. [guide/journey](guide/journey.md) — five steps and owners  
+3. [guide/how-a-deploy-works](guide/how-a-deploy-works.md) — build and deploy flow  
+4. [guide/glossary](guide/glossary.md) — terms  
+
+Then use this page for PR order and links into [`docs/`](docs/).
+
+---
+
 Reusable checklist for moving a Yoyo **Next.js** (or similar containerized) app from **AWS Amplify** to **EKS**, with **Tekton** (Kaniko build → ECR) and **Argo CD** (deploy via `cloud_catalog` + `yoyo-app` Helm values in the app repo).
 
 **Reference migration — wiplatform-portal-nextjs:** [#142](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/142) (Docker/health/headers), [#145](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/145) (deploy values), [#153](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/153)–[#155](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/155). ECR naming lesson: [gotchas](docs/gotchas.md) / [#148](https://github.com/yoyogroup/wiplatform-portal-nextjs/pull/148).
@@ -79,6 +92,7 @@ One concern per PR where possible. Never commit secret **values**.
 | [docs/04-rollout.md](docs/04-rollout.md) | INT → PROD |
 | [docs/05-cleanup.md](docs/05-cleanup.md) | Decommission Amplify |
 | [docs/gotchas.md](docs/gotchas.md) | wiplatform lessons |
+| [guide/](guide/) | Human-friendly overview (~10 min) |
 | [templates/](templates/) | Starters (placeholders) |
 | [tickets.md](tickets.md) | Jira stubs |
 | [AGENTS.md](AGENTS.md) | Agent instructions |

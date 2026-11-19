@@ -1,0 +1,101 @@
+# Template: deploy/k8s/int/web/values.yaml
+# Replace <PLACEHOLDERS>. Never commit secret values — SM only.
+# Peer: yoyo-deals-marketplace-nextjs deploy/k8s/int/web/values.yaml
+
+name: <APP_NAME>
+project: <APP_NAME>
+
+env:
+  environment: int
+  region: <AWS_REGION>   # e.g. eu-west-1
+
+deployment:
+  enabled: true
+  image:
+    repository: "<AWS_ACCOUNT_INT>.dkr.ecr.<AWS_REGION>.amazonaws.com/<APP_NAME>-<AWS_REGION>-int"
+    tag: "bootstrap-pending"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  containerPort: 3000
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 15
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: false
+  env:
+    config:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      NODE_OPTIONS: "--max-old-space-size=179"
+      YOYO_APP_ORIGIN: https://<INT_HOST>
+      # Add plain config from inventory (01-inventory.md)
+    secret:
+      # Example — key names only; values in SM
+      BETTER_AUTH_SECRET:
+        name: <APP_NAME>
+
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::<AWS_ACCOUNT_INT>:role/<APP_NAME>-<AWS_REGION>-int"
+
+targetGroupBinding:
+  enabled: false
+
+externalSecret:
+  enabled: true
+  secretStoreRef: aws-secrets-manager
+  awsSecretName: int/pl-int-proxy/<APP_NAME>
+  data:
+    - secretKey: BETTER_AUTH_SECRET
+      property: BETTER_AUTH_SECRET
+    # Mirror every deployment.env.secret key
+
+job:
+  enabled: false   # true if you run DB migrations like Marketplace
+
+tekton:
+  buildResources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+  kanikoBuildFlags:
+    - "--use-new-run"
+    - "--snapshot-mode=redo"
+  kanikoCache: true
+  awsaccountid: "<AWS_ACCOUNT_INT>"
+  tasks:
+    - fetch-repository
+    - create-aws-resources
+    - build-image
+    - imagetag-updater
+  docker:
+    dockerfile: Dockerfile
+  buildargs:
+    # NEXT_PUBLIC_* and NODE_OPTIONS for Kaniko — see 02-app-prep.md
+    - NODE_OPTIONS=--max-old-space-size=1536
+  sceptrecommands:
+    - "sceptre --var ServiceName=<APP_NAME>-<AWS_REGION>-int --var template_bucket_name=<INT_CF_TEMPLATE_BUCKET> launch int/svc/services/ecr -y"
+  valuesfile: deploy/k8s/int/web/values.yaml
+  gitrepository: git@github.com:yoyogroup/<REPO>.git
+  branch: <INT_TEKTON_BRANCH>

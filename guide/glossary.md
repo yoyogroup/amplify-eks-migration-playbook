@@ -5,8 +5,9 @@ One-line definitions for the migration playbook. Deeper steps: [journey](journey
 | Term | Meaning |
 | --- | --- |
 | **Amplify** | AWS service that builds and hosts the app from a git branch; env vars and custom HTTP headers often live here today. |
+| **CloudFront** | AWS CDN that often sits in front of Amplify-hosted sites before DNS moves to the **ALB**. |
 | **EKS** | Amazon Elastic Kubernetes Service; the cluster where app **pods** run after migration. |
-| **Tekton** | Kubernetes-native CI that runs build **pipelines** when you push (or when triggered). |
+| **Tekton** | Kubernetes-native CI that runs build **pipelines** on git push or via Slack `/cloud-deploy` (see [03-platform](../docs/03-platform.md)). |
 | **Kaniko** | Tool Tekton uses to build a Docker image inside the cluster without a Docker daemon. |
 | **Sceptre** | Wrapper used in Tekton to run CloudFormation and create the **ECR** repo if missing. |
 | **ECR** | Elastic Container Registry; private store for Docker images Tekton pushes. |

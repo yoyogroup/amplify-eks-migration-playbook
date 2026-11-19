@@ -2,12 +2,13 @@
 
 ## New here? Start with the guide
 
-~10 minutes, plain English, for devs, leads, and QA:
+~10 minutes for the first three pages (plain English; devs, leads, QA):
 
 1. [guide/overview](guide/overview.md) — what changes  
 2. [guide/journey](guide/journey.md) — five steps and owners  
 3. [guide/how-a-deploy-works](guide/how-a-deploy-works.md) — build and deploy flow  
-4. [guide/glossary](guide/glossary.md) — terms  
+
+[guide/glossary](guide/glossary.md) — lookup when you hit an unfamiliar term  
 
 Then use this page for PR order and links into [`docs/`](docs/).
 

@@ -30,6 +30,8 @@ sequenceDiagram
   K8s->>K8s: Pull image from ECR and start pods
 ```
 
+On a **first migration**, the workload **Argo** app may stay `disable: true` until a real image tag and **Secrets Manager** keys exist — Tekton can still build. See [docs/03-platform.md](../docs/03-platform.md).
+
 ---
 
 ## Where configuration comes from
@@ -39,7 +41,7 @@ sequenceDiagram
 | Plain runtime env | `deployment.env.config` in values YAML | Dev in git |
 | Secrets | AWS **Secrets Manager** | Dev (CPS); key **names** only in git |
 | Secret sync | **ExternalSecret** in cluster | Chart reads SM by path |
-| Browser / build-time | **NEXT_PUBLIC_** via Tekton `buildargs` | Dev in values; inlined in Docker build |
+| Browser / build-time | **NEXT_PUBLIC_** via Tekton `buildargs` and matching Dockerfile `ARG`s | Dev in values; Kaniko passes args at image build |
 | Image version | `deployment.image.tag` in values YAML | **imagetag-updater** or manual PR |
 
 Never commit secret values to git.
@@ -51,7 +53,7 @@ Never commit secret values to git.
 | Symptom | Where to look first |
 | --- | --- |
 | Kaniko push denied or wrong repo | `tekton.sceptrecommands` ServiceName vs `deployment.image.repository`; [gotchas](../docs/gotchas.md) ECR naming |
-| PipelineRun never starts | cloud_catalog Tekton entry; branch matches `tekton.branch` |
+| PipelineRun never starts | Tekton app not `disable: false`; wrong env `pipelines.yaml` (INT vs PROD); `eventListener.mode` not `shared`; branch mismatch with `tekton.branch`; or missing catalog entry — see [03-platform](../docs/03-platform.md) |
 | ImagePullBackOff | Tag still `bootstrap-pending`; ECR name mismatch; Argo enabled too early |
 | ExternalSecret not synced | Missing key in Secrets Manager vs `externalSecret.data` in values |
 | Pod env missing | SM path wrong; property name typo |
